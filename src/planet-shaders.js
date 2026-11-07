@@ -63,7 +63,13 @@ void main() {
   vec3 normal = vec3(position, sqrt(max(0., 1. - dot(position, position))));
   normal = normalize(normal);
   vec3 sun = normalize(uSunDirection);
-  float longitude = atan(normal.x, normal.z) + uRotationOffset + uTime * 0.035;
+#ifdef PROCEDURAL_WORLD
+  float rotation = uTime * 0.035;
+#else
+  // A familiar planet completes a turn in about 45 seconds of real time.
+  float rotation = uTime * 0.4;
+#endif
+  float longitude = atan(normal.x, normal.z) + uRotationOffset + rotation;
   float latitude = asin(clamp(normal.y, -1., 1.));
   vec2 coordinate = vec2(longitude / (2. * PI) + 0.5, latitude / PI + 0.5);
   vec3 surface;
@@ -101,6 +107,11 @@ void main() {
   color += vec3(0.65, 0.78, 1.) * pow(max(0., dot(normal, reflection)), 48.) * water * 0.28;
 #ifdef EARTH_WORLD
   color += texture(uEarthNight, coordinate).rgb * (1. - smoothstep(0., 0.32, light)) * 0.9;
+#endif
+#ifndef PROCEDURAL_WORLD
+  // Lift the surface and shadow detail while keeping highlight roll-off.
+  float peak = max(color.r, max(color.g, color.b));
+  color *= pow(1. - exp(-peak * 1.7), 0.8) / max(peak, 0.0001);
 #endif
   float rim = pow(1. - max(normal.z, 0.), 3.);
   color += uAtmosphereColor * rim * uAtmosphereDensity * 1.8;
